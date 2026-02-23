@@ -13,11 +13,10 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Fetch trips where user is creator or collaborator
+  // Fetch trips where user is creator OR a member (RLS handles visibility via get_user_trip_ids)
   const { data: trips } = await supabase
     .from('trips')
     .select('*, trip_members(id, nickname, role)')
-    .or(`creator_id.eq.${user.id}`)
     .order('created_at', { ascending: false })
 
   const activeTrips = trips?.filter(t => t.status === 'active') ?? []

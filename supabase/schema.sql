@@ -90,6 +90,12 @@ ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE fund_contributions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE trip_invites ENABLE ROW LEVEL SECURITY;
 
+-- Helper function: get all trip_ids the user belongs to (bypasses RLS, no recursion)
+CREATE OR REPLACE FUNCTION get_user_trip_ids(p_user_id UUID)
+RETURNS SETOF UUID AS $$
+  SELECT trip_id FROM trip_members WHERE user_id = p_user_id
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
 -- Helper function: check if user is trip member (creator or collaborator)
 CREATE OR REPLACE FUNCTION is_trip_member(trip_id UUID, user_id UUID)
 RETURNS BOOLEAN AS $$
@@ -102,14 +108,12 @@ RETURNS BOOLEAN AS $$
 $$ LANGUAGE sql SECURITY DEFINER;
 
 -- TRIPS POLICIES
+-- Uses get_user_trip_ids() to avoid cross-table recursion with trip_members
 CREATE POLICY "Users can view trips they are members of"
   ON trips FOR SELECT
   USING (
     creator_id = auth.uid() OR
-    id IN (
-      SELECT trip_id FROM trip_members
-      WHERE user_id = auth.uid()
-    )
+    id IN (SELECT get_user_trip_ids(auth.uid()))
   );
 
 CREATE POLICY "Authenticated users can create trips"
@@ -121,24 +125,31 @@ CREATE POLICY "Creator and collaborators can update trips"
   USING (is_trip_member(id, auth.uid()) OR creator_id = auth.uid());
 
 -- TRIP MEMBERS POLICIES
+-- Uses get_user_trip_ids() to avoid self-referencing recursion
 CREATE POLICY "Members can view trip members"
   ON trip_members FOR SELECT
   USING (
-    trip_id IN (
-      SELECT id FROM trips
-      WHERE creator_id = auth.uid()
-      OR id IN (SELECT trip_id FROM trip_members WHERE user_id = auth.uid())
-    )
+    trip_id IN (SELECT get_user_trip_ids(auth.uid()))
+    OR trip_id IN (SELECT id FROM trips WHERE creator_id = auth.uid())
   );
 
-CREATE POLICY "Creator and collaborators can manage members"
-  ON trip_members FOR ALL
-  USING (is_trip_member(trip_id, auth.uid()) OR
-    trip_id IN (SELECT id FROM trips WHERE creator_id = auth.uid()));
-
-CREATE POLICY "Anyone can insert their own member record"
+CREATE POLICY "Anyone can insert member record"
   ON trip_members FOR INSERT
   WITH CHECK (true);
+
+CREATE POLICY "Managers can update members"
+  ON trip_members FOR UPDATE
+  USING (
+    is_trip_member(trip_id, auth.uid()) OR
+    trip_id IN (SELECT id FROM trips WHERE creator_id = auth.uid())
+  );
+
+CREATE POLICY "Managers can delete members"
+  ON trip_members FOR DELETE
+  USING (
+    is_trip_member(trip_id, auth.uid()) OR
+    trip_id IN (SELECT id FROM trips WHERE creator_id = auth.uid())
+  );
 
 -- EXPENSES POLICIES
 CREATE POLICY "Trip members can view expenses"

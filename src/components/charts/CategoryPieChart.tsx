@@ -1,5 +1,6 @@
 'use client'
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { useState, useEffect } from 'react'
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { formatCurrency } from '@/lib/utils'
 
 interface PieData {
@@ -48,6 +49,9 @@ function CustomLegend({ data, currency }: { data: PieData[]; currency: string })
 }
 
 export default function CategoryPieChart({ data, currency }: Props) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+
   if (data.length === 0) {
     return (
       <div className="text-center py-8 text-slate-400">
@@ -60,6 +64,7 @@ export default function CategoryPieChart({ data, currency }: Props) {
   return (
     <div>
       <div className="h-48">
+        {mounted && (
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -78,6 +83,7 @@ export default function CategoryPieChart({ data, currency }: Props) {
             <Tooltip content={<CustomTooltip currency={currency} />} />
           </PieChart>
         </ResponsiveContainer>
+        )}
       </div>
       <CustomLegend data={data} currency={currency} />
     </div>
