@@ -1,8 +1,57 @@
+'use client'
+import { Suspense, useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const inviteToken = searchParams.get('invite')
+  const [processing, setProcessing] = useState(false)
+  const [done, setDone] = useState(false)
+
+  useEffect(() => {
+    // If there's an invite token on this page (fallback — user was redirected here
+    // instead of /auth/callback), try to process the invite now.
+    if (!inviteToken) {
+      setDone(true)
+      return
+    }
+
+    setProcessing(true)
+    fetch('/api/process-invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: inviteToken }),
+    })
+      .then(res => res.json())
+      .then(result => {
+        if (result.tripId) {
+          router.replace(`/trips/${result.tripId}`)
+        } else {
+          setDone(true)
+          setProcessing(false)
+        }
+      })
+      .catch(() => {
+        setDone(true)
+        setProcessing(false)
+      })
+  }, [inviteToken, router])
+
+  if (processing && !done) {
+    return (
+      <Card>
+        <div className="text-center py-8">
+          <div className="text-4xl mb-4">⏳</div>
+          <p className="text-sm text-slate-500">正在加入旅程，請稍候…</p>
+        </div>
+      </Card>
+    )
+  }
+
   return (
     <Card>
       <div className="text-center py-4">
@@ -16,5 +65,20 @@ export default function VerifyEmailPage() {
         </Link>
       </div>
     </Card>
+  )
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={
+      <Card>
+        <div className="text-center py-8">
+          <div className="text-4xl mb-4">⏳</div>
+          <p className="text-sm text-slate-500">載入中…</p>
+        </div>
+      </Card>
+    }>
+      <VerifyEmailContent />
+    </Suspense>
   )
 }

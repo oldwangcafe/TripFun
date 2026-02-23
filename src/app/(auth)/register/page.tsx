@@ -30,20 +30,53 @@ function RegisterForm() {
     setError('')
 
     const supabase = createClient()
-    const { error } = await supabase.auth.signUp({
+
+    // emailRedirectTo points to /auth/callback so PKCE exchange + invite are handled there
+    const redirectTo = inviteToken
+      ? `${window.location.origin}/auth/callback?invite=${inviteToken}`
+      : `${window.location.origin}/auth/callback`
+
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { display_name: displayName },
-        emailRedirectTo: `${window.location.origin}/verify-email${inviteToken ? `?invite=${inviteToken}` : ''}`,
+        emailRedirectTo: redirectTo,
       },
     })
-    if (error) {
-      setError(error.message)
+
+    if (signUpError) {
+      setError(signUpError.message)
       setLoading(false)
       return
     }
+
+    // If email confirmation is OFF, Supabase returns a session immediately
+    if (data.session) {
+      if (inviteToken) {
+        try {
+          const res = await fetch('/api/process-invite', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: inviteToken }),
+          })
+          const result = await res.json()
+          if (result.tripId) {
+            router.push(`/trips/${result.tripId}`)
+            return
+          }
+        } catch {
+          // Invite processing failed — still navigate to dashboard
+        }
+      }
+      router.push('/dashboard')
+      router.refresh()
+      return
+    }
+
+    // Email confirmation is ON — show "check your email" screen
     setDone(true)
+    setLoading(false)
   }
 
   if (done) {
@@ -55,6 +88,11 @@ function RegisterForm() {
           <p className="text-sm text-slate-500">
             請到 <strong>{email}</strong> 收取確認信，點擊連結完成驗證後即可登入。
           </p>
+          {inviteToken && (
+            <p className="text-xs text-indigo-600 bg-indigo-50 px-3 py-2 rounded-lg mt-4">
+              ✅ 驗證後將自動加入旅程協助者
+            </p>
+          )}
         </div>
       </Card>
     )
@@ -100,13 +138,16 @@ function RegisterForm() {
           <p className="text-sm text-rose-500 bg-rose-50 px-3 py-2 rounded-lg">{error}</p>
         )}
         <Button type="submit" fullWidth loading={loading} size="lg">
-          註冊並發送確認信
+          {inviteToken ? '註冊並加入旅程' : '註冊'}
         </Button>
       </form>
       <div className="mt-4 text-center">
         <p className="text-sm text-slate-500">
           已有帳號？{' '}
-          <Link href="/login" className="text-indigo-600 font-medium hover:underline">
+          <Link
+            href={inviteToken ? `/login?invite=${inviteToken}` : '/login'}
+            className="text-indigo-600 font-medium hover:underline"
+          >
             立即登入
           </Link>
         </p>
