@@ -24,25 +24,19 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       />
-      {/* Modal */}
+      {/* Modal — always centered */}
       <div className={cn(
-        'relative bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl',
-        'max-h-[90vh] overflow-y-auto',
-        'animate-slideUp',
-        'shadow-xl',
+        'relative bg-white w-full max-w-sm rounded-2xl',
+        'max-h-[85vh] overflow-y-auto',
+        'animate-slideUp shadow-2xl',
         className
       )}>
-        {/* Drag handle (mobile) */}
-        <div className="sm:hidden flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full bg-slate-200" />
-        </div>
-
         {/* Header */}
         {title && (
           <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-slate-100">

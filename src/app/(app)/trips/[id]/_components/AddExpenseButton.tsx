@@ -1,6 +1,5 @@
 'use client'
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Modal } from '@/components/ui/Modal'
@@ -10,15 +9,22 @@ import Select from '@/components/ui/Select'
 import Textarea from '@/components/ui/Textarea'
 import { EXPENSE_CATEGORIES, CURRENCIES } from '@/lib/constants'
 import { Trip, TripMember } from '@/types'
+import { formatCurrency } from '@/lib/utils'
 
 interface Props {
   trip: Trip
   members: TripMember[]
   userId: string
+  /** Called immediately after a successful insert for optimistic UI update */
+  onExpenseAdded?: (expense: {
+    amount: number
+    category: string
+    description: string
+    paidByMemberId?: string
+  }) => void
 }
 
-export default function AddExpenseButton({ trip, members, userId }: Props) {
-  const router = useRouter()
+export default function AddExpenseButton({ trip, members, userId, onExpenseAdded }: Props) {
   const [open, setOpen] = useState(false)
   const [category, setCategory] = useState<string>('meals')
   const [amount, setAmount] = useState('')
@@ -26,24 +32,43 @@ export default function AddExpenseButton({ trip, members, userId }: Props) {
   const [paidByMemberId, setPaidByMemberId] = useState('')
   const [note, setNote] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const currencySymbol = CURRENCIES.find(c => c.code === trip.trip_currency)?.symbol ?? trip.trip_currency
+  const amountNum = parseFloat(amount)
+  const exceedsBalance = !!amountNum && amountNum > trip.current_fund
 
   const memberOptions = [
     { value: '', label: '-- 選擇付款人（選填）' },
     ...members.map(m => ({ value: m.id, label: m.nickname }))
   ]
 
+  function resetForm() {
+    setAmount('')
+    setDescription('')
+    setNote('')
+    setPaidByMemberId('')
+    setCategory('meals')
+    setError('')
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const amountNum = parseFloat(amount)
-    if (!amountNum || amountNum <= 0) return
+    if (!amountNum || amountNum <= 0) {
+      setError('請輸入有效金額')
+      return
+    }
+    if (amountNum > trip.current_fund) {
+      setError(`金額超過公基金餘額（剩餘：${formatCurrency(trip.current_fund, trip.trip_currency)}）`)
+      return
+    }
+
     setLoading(true)
+    setError('')
 
     const supabase = createClient()
 
-    // Insert expense
-    const { error } = await supabase.from('expenses').insert({
+    const { error: insertError } = await supabase.from('expenses').insert({
       trip_id: trip.id,
       recorded_by: userId,
       category,
@@ -53,20 +78,27 @@ export default function AddExpenseButton({ trip, members, userId }: Props) {
       note,
     })
 
-    if (!error) {
-      // Update trip current_fund
-      await supabase
-        .from('trips')
-        .update({ current_fund: trip.current_fund - amountNum })
-        .eq('id', trip.id)
+    if (insertError) {
+      setError('新增失敗，請再試一次')
+      setLoading(false)
+      return
     }
+
+    await supabase
+      .from('trips')
+      .update({ current_fund: trip.current_fund - amountNum })
+      .eq('id', trip.id)
 
     setLoading(false)
     setOpen(false)
-    setAmount('')
-    setDescription('')
-    setNote('')
-    router.refresh()
+    // Notify parent to update optimistic state immediately
+    onExpenseAdded?.({
+      amount: amountNum,
+      category,
+      description,
+      paidByMemberId: paidByMemberId || undefined,
+    })
+    resetForm()
   }
 
   return (
@@ -76,7 +108,7 @@ export default function AddExpenseButton({ trip, members, userId }: Props) {
         新增支出
       </Button>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="新增支出">
+      <Modal open={open} onClose={() => { setOpen(false); resetForm() }} title="新增支出">
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Category */}
           <div>
@@ -100,17 +132,26 @@ export default function AddExpenseButton({ trip, members, userId }: Props) {
             </div>
           </div>
 
-          <Input
-            label={`金額（${trip.trip_currency}）`}
-            type="number"
-            placeholder="0"
-            value={amount}
-            onChange={e => setAmount(e.target.value)}
-            leftIcon={<span className="text-sm font-medium">{currencySymbol}</span>}
-            required
-            min="0"
-            step="1"
-          />
+          <div>
+            <Input
+              label={`金額（${trip.trip_currency}）`}
+              type="number"
+              placeholder="0"
+              value={amount}
+              onChange={e => { setAmount(e.target.value); setError('') }}
+              leftIcon={<span className="text-sm font-medium">{currencySymbol}</span>}
+              required
+              min="0"
+              step="1"
+            />
+            {/* Live balance hint */}
+            {amountNum > 0 && (
+              <p className={`text-xs mt-1 px-1 ${exceedsBalance ? 'text-rose-500 font-medium' : 'text-slate-400'}`}>
+                公基金剩餘：{formatCurrency(trip.current_fund, trip.trip_currency)}
+                {exceedsBalance && '　⚠️ 超出餘額'}
+              </p>
+            )}
+          </div>
 
           <Input
             label="說明（選填）"
@@ -134,11 +175,15 @@ export default function AddExpenseButton({ trip, members, userId }: Props) {
             rows={2}
           />
 
+          {error && (
+            <p className="text-sm text-rose-500 bg-rose-50 px-3 py-2 rounded-xl">{error}</p>
+          )}
+
           <div className="flex gap-3 pt-1">
-            <Button type="button" variant="outline" fullWidth onClick={() => setOpen(false)}>
+            <Button type="button" variant="outline" fullWidth onClick={() => { setOpen(false); resetForm() }}>
               取消
             </Button>
-            <Button type="submit" fullWidth loading={loading}>
+            <Button type="submit" fullWidth loading={loading} disabled={exceedsBalance}>
               記帳
             </Button>
           </div>

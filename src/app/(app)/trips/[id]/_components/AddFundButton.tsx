@@ -1,7 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { PlusCircle, X } from 'lucide-react'
+import { PlusCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Modal } from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
@@ -14,16 +13,18 @@ interface Props {
   trip: Trip
   members: TripMember[]
   userId: string
+  /** Called immediately after a successful insert for optimistic UI update */
+  onFundAdded?: (amount: number) => void
 }
 
-export default function AddFundButton({ trip, members, userId }: Props) {
-  const router = useRouter()
+export default function AddFundButton({ trip, members, userId, onFundAdded }: Props) {
   const [open, setOpen] = useState(false)
   const [contributions, setContributions] = useState<{ memberId: string; amount: string }[]>(
     members.map(m => ({ memberId: m.id, amount: '' }))
   )
   const [note, setNote] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const currencySymbol = CURRENCIES.find(c => c.code === trip.trip_currency)?.symbol ?? trip.trip_currency
 
@@ -40,6 +41,7 @@ export default function AddFundButton({ trip, members, userId }: Props) {
     e.preventDefault()
     if (totalAmount <= 0) return
     setLoading(true)
+    setError('')
 
     const supabase = createClient()
     const validContributors = contributions
@@ -49,13 +51,19 @@ export default function AddFundButton({ trip, members, userId }: Props) {
         return { member_id: c.memberId, amount: parseFloat(c.amount), nickname: member?.nickname ?? '' }
       })
 
-    await supabase.from('fund_contributions').insert({
+    const { error: insertError } = await supabase.from('fund_contributions').insert({
       trip_id: trip.id,
       recorded_by: userId,
       total_amount: totalAmount,
       contributors: validContributors,
       note,
     })
+
+    if (insertError) {
+      setError('追加失敗，請再試一次')
+      setLoading(false)
+      return
+    }
 
     await supabase
       .from('trips')
@@ -64,7 +72,11 @@ export default function AddFundButton({ trip, members, userId }: Props) {
 
     setLoading(false)
     setOpen(false)
-    router.refresh()
+    setNote('')
+    setContributions(members.map(m => ({ memberId: m.id, amount: '' })))
+
+    // Notify parent for immediate optimistic update
+    onFundAdded?.(totalAmount)
   }
 
   return (
@@ -113,6 +125,10 @@ export default function AddFundButton({ trip, members, userId }: Props) {
             onChange={e => setNote(e.target.value)}
             rows={2}
           />
+
+          {error && (
+            <p className="text-sm text-rose-500 bg-rose-50 px-3 py-2 rounded-xl">{error}</p>
+          )}
 
           <div className="flex gap-3">
             <Button type="button" variant="outline" fullWidth onClick={() => setOpen(false)}>

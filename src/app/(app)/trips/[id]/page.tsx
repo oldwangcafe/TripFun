@@ -4,12 +4,8 @@ import Link from 'next/link'
 import { BarChart2, Users, Receipt, ArrowRight } from 'lucide-react'
 import { Navbar } from '@/components/layout/Navbar'
 import { Card } from '@/components/ui/Card'
-import { Badge } from '@/components/ui/Badge'
-import FundBalanceCard from './_components/FundBalanceCard'
-import ExpenseListClient from './_components/ExpenseListClient'
-import AddExpenseButton from './_components/AddExpenseButton'
-import AddFundButton from './_components/AddFundButton'
 import TripActionMenu from './_components/TripActionMenu'
+import TripDetailClient from './_components/TripDetailClient'
 
 export default async function TripDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -65,19 +61,14 @@ export default async function TripDetailPage({ params }: { params: Promise<{ id:
       />
 
       <div className="px-4 py-4 space-y-4">
-        {/* Fund Balance */}
-        <FundBalanceCard
+        {/* Client component: FundBalanceCard + quick actions + recent expenses (with optimistic updates) */}
+        <TripDetailClient
           trip={trip}
+          members={members ?? []}
           expenses={expenses ?? []}
+          userId={user.id}
+          isManager={isManager}
         />
-
-        {/* Quick actions */}
-        {isManager && trip.status === 'active' && (
-          <div className="grid grid-cols-2 gap-3">
-            <AddExpenseButton trip={trip} members={members ?? []} userId={user.id} />
-            <AddFundButton trip={trip} members={members ?? []} userId={user.id} />
-          </div>
-        )}
 
         {/* Navigation cards */}
         <div className="grid grid-cols-3 gap-2">
@@ -103,24 +94,6 @@ export default async function TripDetailPage({ params }: { params: Promise<{ id:
             </Card>
           </Link>
         </div>
-
-        {/* Recent Expenses */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-slate-700">最新支出</h2>
-            {(expenses?.length ?? 0) > 5 && (
-              <Link href={`/trips/${id}/expenses`} className="text-xs text-indigo-500 flex items-center gap-1">
-                查看全部 <ArrowRight className="w-3 h-3" />
-              </Link>
-            )}
-          </div>
-          <ExpenseListClient
-            initialExpenses={(expenses ?? []).slice(0, 5)}
-            tripCurrency={trip.trip_currency}
-            settlementCurrency={trip.settlement_currency}
-            exchangeRate={trip.exchange_rate}
-          />
-        </section>
 
         {/* Fund Contribution History */}
         {contributions && contributions.length > 0 && (

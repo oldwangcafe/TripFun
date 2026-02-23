@@ -1,15 +1,13 @@
 'use client'
-import { useRouter } from 'next/navigation'
 import { LogOut } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 export default function LogoutButton() {
-  const router = useRouter()
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/login')
-    router.refresh()
+    // Full page navigation to ensure session cookie is cleared before redirect
+    window.location.href = '/login'
   }
   return (
     <button
