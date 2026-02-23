@@ -1,30 +1,53 @@
 import { TripMember, Expense, FundContribution, Settlement, MemberBalance } from '@/types'
 
+/**
+ * Calculate each member's balance.
+ *
+ * Fair-share model (supports negative fund / out-of-pocket payments):
+ *   fairShare  = total expenses ÷ number of members
+ *   totalPaid  = fund contributions  +  out-of-pocket expenses (paid_by_member_id)
+ *   balance    = totalPaid − fairShare
+ *     > 0  → creditor (others owe this person)
+ *     < 0  → debtor   (this person owes others)
+ *
+ * When `expenses` is omitted the old contribution-only model is used as fallback.
+ */
 export function calculateMemberBalances(
   members: TripMember[],
   contributions: FundContribution[],
+  expenses: Expense[] = [],
 ): MemberBalance[] {
-  const totalContributed = contributions.reduce((sum, c) => sum + c.total_amount, 0)
-  const perPersonFairShare = members.length > 0 ? totalContributed / members.length : 0
+  // Use actual total expenses as the fair-share basis when available;
+  // fall back to total fund contributions for backward compatibility.
+  const totalBasis = expenses.length > 0
+    ? expenses.reduce((sum, e) => sum + e.amount, 0)
+    : contributions.reduce((sum, c) => sum + c.total_amount, 0)
+
+  const perPersonFairShare = members.length > 0 ? totalBasis / members.length : 0
 
   return members.map(member => {
-    // Sum all contributions from this member
-    let contributed = 0
+    // 1. Fund contributions (money put INTO the public fund)
+    let fundContributed = 0
     contributions.forEach(c => {
       const entry = c.contributors?.find(e => e.member_id === member.id)
-      if (entry) contributed += entry.amount
+      if (entry) fundContributed += entry.amount
     })
-
-    // If no detailed contributor records, use per_person_contribution
-    if (contributed === 0) {
-      contributed = member.per_person_contribution ?? 0
+    // Fallback: per_person_contribution column
+    if (fundContributed === 0) {
+      fundContributed = member.per_person_contribution ?? 0
     }
 
-    const balance = contributed - perPersonFairShare
+    // 2. Out-of-pocket payments (expenses this member personally paid for)
+    const outOfPocket = expenses
+      .filter(e => e.paid_by_member_id === member.id)
+      .reduce((sum, e) => sum + e.amount, 0)
+
+    const totalPaid = fundContributed + outOfPocket
+    const balance = totalPaid - perPersonFairShare
 
     return {
       member,
-      contributed,
+      contributed: totalPaid,   // fund contributions + out-of-pocket advances
       fairShare: perPersonFairShare,
       balance,
     }

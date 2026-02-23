@@ -24,9 +24,14 @@ export default function FundBalanceCard({ trip, expenses }: Props) {
     <Card className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-0 shadow-lg shadow-indigo-200">
       <div className="mb-4">
         <p className="text-white/70 text-sm mb-1">公基金餘額</p>
-        <p className="text-4xl font-bold tracking-tight">
+        <p className={`text-4xl font-bold tracking-tight ${trip.current_fund < 0 ? 'text-rose-300' : ''}`}>
           {formatCurrency(trip.current_fund, trip.trip_currency)}
         </p>
+        {trip.current_fund < 0 && (
+          <p className="text-rose-300 text-xs mt-1">
+            💳 墊付 {formatCurrency(Math.abs(trip.current_fund), trip.trip_currency)}，結算時補回
+          </p>
+        )}
         {trip.exchange_rate && trip.settlement_currency !== trip.trip_currency && (
           <p className="text-white/60 text-sm mt-1">
             ≈ {formatCurrency(trip.current_fund * trip.exchange_rate, trip.settlement_currency)}
@@ -38,12 +43,12 @@ export default function FundBalanceCard({ trip, expenses }: Props) {
       <div className="mb-4">
         <div className="flex justify-between text-xs text-white/60 mb-1.5">
           <span>已用 {formatCurrency(spent, trip.trip_currency)}</span>
-          <span>{Math.round(percentage)}% 剩餘</span>
+          <span>{trip.current_fund < 0 ? '已超支' : `${Math.round(percentage)}% 剩餘`}</span>
         </div>
         <div className="h-2 bg-white/20 rounded-full overflow-hidden">
           <div
-            className="h-full bg-white/80 rounded-full transition-all duration-500"
-            style={{ width: `${percentage}%` }}
+            className={`h-full rounded-full transition-all duration-500 ${trip.current_fund < 0 ? 'bg-rose-400/80 w-full' : 'bg-white/80'}`}
+            style={{ width: trip.current_fund < 0 ? '100%' : `${percentage}%` }}
           />
         </div>
       </div>

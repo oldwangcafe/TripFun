@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
   if (!trip) return NextResponse.json({ error: 'Trip not found' }, { status: 404 })
 
   const categoryTotals = calculateCategoryTotals(expenses ?? [])
-  const memberBalances = calculateMemberBalances(members ?? [], contributions ?? [])
+  const memberBalances = calculateMemberBalances(members ?? [], contributions ?? [], expenses ?? [])
   const settlements = calculateSettlements(memberBalances, trip.trip_currency)
   const totalSpent = (expenses ?? []).reduce((s, e) => s + e.amount, 0)
 

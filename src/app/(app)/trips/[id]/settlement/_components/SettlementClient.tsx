@@ -24,7 +24,7 @@ export default function SettlementClient({ trip, members, expenses, contribution
 
   const categoryTotals = calculateCategoryTotals(expenses)
   const totalSpent = Object.values(categoryTotals).reduce((a, b) => a + b, 0)
-  const memberBalances = calculateMemberBalances(members, contributions)
+  const memberBalances = calculateMemberBalances(members, contributions, expenses)
   const settlements = calculateSettlements(memberBalances, trip.trip_currency)
 
   const pieData = EXPENSE_CATEGORIES
@@ -98,7 +98,7 @@ export default function SettlementClient({ trip, members, expenses, contribution
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-slate-700">{member.nickname}</p>
                 <p className="text-xs text-slate-400">
-                  出資 {formatCurrency(contributed, trip.trip_currency)} · 應分攤 {formatCurrency(fairShare, trip.trip_currency)}
+                  出資（含墊付）{formatCurrency(contributed, trip.trip_currency)} · 應分攤 {formatCurrency(fairShare, trip.trip_currency)}
                 </p>
               </div>
               <div className={`text-sm font-bold ${balance >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>

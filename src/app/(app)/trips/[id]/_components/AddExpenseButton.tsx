@@ -36,6 +36,7 @@ export default function AddExpenseButton({ trip, members, userId, onExpenseAdded
 
   const currencySymbol = CURRENCIES.find(c => c.code === trip.trip_currency)?.symbol ?? trip.trip_currency
   const amountNum = parseFloat(amount)
+  // Informational only — does NOT block submission (negative fund = advance payment)
   const exceedsBalance = !!amountNum && amountNum > trip.current_fund
 
   const memberOptions = [
@@ -58,10 +59,7 @@ export default function AddExpenseButton({ trip, members, userId, onExpenseAdded
       setError('請輸入有效金額')
       return
     }
-    if (amountNum > trip.current_fund) {
-      setError(`金額超過公基金餘額（剩餘：${formatCurrency(trip.current_fund, trip.trip_currency)}）`)
-      return
-    }
+    // No upper-limit check — fund is allowed to go negative (advance payment scenario)
 
     setLoading(true)
     setError('')
@@ -146,9 +144,9 @@ export default function AddExpenseButton({ trip, members, userId, onExpenseAdded
             />
             {/* Live balance hint */}
             {amountNum > 0 && (
-              <p className={`text-xs mt-1 px-1 ${exceedsBalance ? 'text-rose-500 font-medium' : 'text-slate-400'}`}>
+              <p className={`text-xs mt-1 px-1 ${exceedsBalance ? 'text-amber-600 font-medium' : 'text-slate-400'}`}>
                 公基金剩餘：{formatCurrency(trip.current_fund, trip.trip_currency)}
-                {exceedsBalance && '　⚠️ 超出餘額'}
+                {exceedsBalance && '　⚠️ 超出餘額，將以墊付方式記帳'}
               </p>
             )}
           </div>
@@ -183,8 +181,8 @@ export default function AddExpenseButton({ trip, members, userId, onExpenseAdded
             <Button type="button" variant="outline" fullWidth onClick={() => { setOpen(false); resetForm() }}>
               取消
             </Button>
-            <Button type="submit" fullWidth loading={loading} disabled={exceedsBalance}>
-              記帳
+            <Button type="submit" fullWidth loading={loading}>
+              {exceedsBalance ? '墊付記帳' : '記帳'}
             </Button>
           </div>
         </form>
