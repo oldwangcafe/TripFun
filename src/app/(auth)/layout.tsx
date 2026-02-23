@@ -7,7 +7,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-indigo-500 shadow-lg shadow-indigo-200 mb-4">
             <span className="text-3xl">✈️</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-800">TripFund</h1>
+          <h1 className="text-2xl font-bold text-slate-800">TripFun</h1>
           <p className="text-sm text-slate-500 mt-1">旅遊公基金管理</p>
         </div>
         {children}

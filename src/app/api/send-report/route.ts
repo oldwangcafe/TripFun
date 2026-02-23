@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;margin:0;padding:20px;">
       <div style="max-width:600px;margin:0 auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
         <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:32px;color:white;">
-          <p style="margin:0;font-size:14px;opacity:0.8;">TripFund 旅程結算報告</p>
+          <p style="margin:0;font-size:14px;opacity:0.8;">TripFun 旅程結算報告</p>
           <h1 style="margin:8px 0 0;font-size:28px;">${trip.title}</h1>
           <p style="margin:8px 0 0;opacity:0.7;">📍 ${trip.destination}</p>
         </div>
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
           </table>
         </div>
         <div style="padding:16px 24px;background:#f8fafc;text-align:center;">
-          <p style="margin:0;font-size:12px;color:#94a3b8;">由 TripFund 自動產生 · ${new Date().toLocaleDateString('zh-TW')}</p>
+          <p style="margin:0;font-size:12px;color:#94a3b8;">由 TripFun 自動產生 · ${new Date().toLocaleDateString('zh-TW')}</p>
         </div>
       </div>
     </body>
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'TripFund <noreply@tripfund.app>',
+      from: 'TripFun <noreply@tripfund.app>',
       to: [userEmail],
       subject: `✈️ ${trip.title} 旅程結算報告`,
       html,

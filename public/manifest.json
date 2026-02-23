@@ -1,6 +1,6 @@
 {
-  "name": "TripFund - 旅遊公基金管理",
-  "short_name": "TripFund",
+  "name": "TripFun - 旅遊公基金管理",
+  "short_name": "TripFun",
   "description": "和朋友出遊時，輕鬆管理公共基金、記錄支出、一鍵結算",
   "start_url": "/dashboard",
   "display": "standalone",
