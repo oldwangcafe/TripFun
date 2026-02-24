@@ -3,27 +3,48 @@ import { TripMember, Expense, FundContribution, Settlement, MemberBalance } from
 /**
  * Calculate each member's balance.
  *
- * Fair-share model (supports negative fund / out-of-pocket payments):
- *   fairShare  = total expenses ÷ number of members
- *   totalPaid  = fund contributions  +  out-of-pocket expenses (paid_by_member_id)
- *   balance    = totalPaid − fairShare
- *     > 0  → creditor (others owe this person)
- *     < 0  → debtor   (this person owes others)
+ * Chronological advance model:
+ *   - All expenses are paid from the group fund.
+ *   - paid_by_member_id marks who physically handled an expense.
+ *   - A personal "advance" only occurs when the fund balance is insufficient
+ *     to cover that expense. advance = max(0, expense.amount − max(0, runningFund))
+ *   - fairShare  = total expenses ÷ number of members
+ *   - contributed = fund contributions + personal advance
+ *   - balance    = contributed − fairShare
+ *       > 0  → creditor (others owe this person)
+ *       < 0  → debtor   (this person owes others)
  *
- * When `expenses` is omitted the old contribution-only model is used as fallback.
+ * When `expenses` is omitted the contribution-only model is used as fallback.
  */
 export function calculateMemberBalances(
   members: TripMember[],
   contributions: FundContribution[],
   expenses: Expense[] = [],
 ): MemberBalance[] {
-  // Use actual total expenses as the fair-share basis when available;
-  // fall back to total fund contributions for backward compatibility.
-  const totalBasis = expenses.length > 0
-    ? expenses.reduce((sum, e) => sum + e.amount, 0)
-    : contributions.reduce((sum, c) => sum + c.total_amount, 0)
-
+  const totalContributions = contributions.reduce((sum, c) => sum + c.total_amount, 0)
+  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0)
+  const totalBasis = expenses.length > 0 ? totalExpenses : totalContributions
   const perPersonFairShare = members.length > 0 ? totalBasis / members.length : 0
+
+  // --- Chronological advance calculation ---
+  // Process expenses in order. When fund < expense amount and someone physically
+  // paid (paid_by_member_id), the shortfall is their personal advance.
+  const advances: Record<string, number> = {}
+  members.forEach(m => { advances[m.id] = 0 })
+
+  let runningFund = totalContributions
+  const sortedExpenses = [...expenses].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  )
+
+  for (const expense of sortedExpenses) {
+    if (expense.paid_by_member_id && advances[expense.paid_by_member_id] !== undefined) {
+      // Only the portion exceeding available fund is an out-of-pocket advance
+      const advance = Math.max(0, expense.amount - Math.max(0, runningFund))
+      advances[expense.paid_by_member_id] += advance
+    }
+    runningFund -= expense.amount
+  }
 
   return members.map(member => {
     // 1. Fund contributions (money put INTO the public fund)
@@ -37,19 +58,17 @@ export function calculateMemberBalances(
       fundContributed = member.per_person_contribution ?? 0
     }
 
-    // 2. Out-of-pocket payments (expenses this member personally paid for)
-    const outOfPocket = expenses
-      .filter(e => e.paid_by_member_id === member.id)
-      .reduce((sum, e) => sum + e.amount, 0)
-
-    const totalPaid = fundContributed + outOfPocket
+    // 2. Personal advance (only the excess beyond available fund, chronologically)
+    const advance = advances[member.id] ?? 0
+    const totalPaid = fundContributed + advance
     const balance = totalPaid - perPersonFairShare
 
     return {
       member,
-      contributed: totalPaid,   // fund contributions + out-of-pocket advances
+      contributed: totalPaid,
       fairShare: perPersonFairShare,
       balance,
+      advance,
     }
   })
 }

@@ -98,6 +98,7 @@ export interface MemberBalance {
   contributed: number
   fairShare: number
   balance: number
+  advance?: number
 }
 
 export interface CurrencyOption {

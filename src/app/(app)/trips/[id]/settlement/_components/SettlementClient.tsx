@@ -7,7 +7,7 @@ import CategoryPieChart from '@/components/charts/CategoryPieChart'
 import { calculateMemberBalances, calculateSettlements, calculateCategoryTotals } from '@/lib/settlement'
 import { formatCurrency } from '@/lib/utils'
 import { EXPENSE_CATEGORIES } from '@/lib/constants'
-import { ArrowRight, Mail, CheckCircle2 } from 'lucide-react'
+import { Mail, CheckCircle2 } from 'lucide-react'
 
 interface Props {
   trip: Trip
@@ -90,7 +90,7 @@ export default function SettlementClient({ trip, members, expenses, contribution
       <Card>
         <h3 className="font-semibold text-slate-800 mb-4">成員概覽</h3>
         <div className="space-y-3">
-          {memberBalances.map(({ member, contributed, fairShare, balance }) => (
+          {memberBalances.map(({ member, contributed, fairShare, balance, advance }) => (
             <div key={member.id} className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center font-semibold text-indigo-600 text-sm flex-shrink-0">
                 {member.nickname.slice(0, 2)}
@@ -98,7 +98,9 @@ export default function SettlementClient({ trip, members, expenses, contribution
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-slate-700">{member.nickname}</p>
                 <p className="text-xs text-slate-400">
-                  出資（含墊付）{formatCurrency(contributed, trip.trip_currency)} · 應分攤 {formatCurrency(fairShare, trip.trip_currency)}
+                  出資 {formatCurrency(contributed, trip.trip_currency)}
+                  {advance && advance > 0 ? `（含墊付 ${formatCurrency(advance, trip.trip_currency)}）` : ''}
+                  {' · '}應分攤 {formatCurrency(fairShare, trip.trip_currency)}
                 </p>
               </div>
               <div className={`text-sm font-bold ${balance >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
@@ -118,23 +120,22 @@ export default function SettlementClient({ trip, members, expenses, contribution
             <p className="text-sm text-slate-500">🎉 大家貢獻均等，無需補款！</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {settlements.map((s, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-                <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center font-semibold text-rose-600 text-xs flex-shrink-0">
+              <div key={i} className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl">
+                <div className="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center font-semibold text-rose-500 text-xs flex-shrink-0">
                   {s.from.slice(0, 2)}
                 </div>
-                <p className="text-sm font-medium text-slate-700 flex-shrink-0">{s.from}</p>
-                <ArrowRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center font-semibold text-emerald-600 text-xs flex-shrink-0">
-                  {s.to.slice(0, 2)}
-                </div>
-                <p className="text-sm font-medium text-slate-700 flex-shrink-0">{s.to}</p>
-                <div className="flex-1 text-right">
-                  <p className="text-sm font-bold text-slate-800">
-                    {formatCurrency(s.amount, s.currency)}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-slate-700">
+                    <span className="font-semibold">{s.from}</span>
+                    <span className="text-slate-400 mx-1">付給</span>
+                    <span className="font-semibold">{s.to}</span>
                   </p>
                 </div>
+                <p className="text-sm font-bold text-rose-500 flex-shrink-0">
+                  {formatCurrency(s.amount, s.currency)}
+                </p>
               </div>
             ))}
           </div>
