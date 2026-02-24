@@ -27,23 +27,36 @@ export function calculateMemberBalances(
   const perPersonFairShare = members.length > 0 ? totalBasis / members.length : 0
 
   // --- Chronological advance calculation ---
-  // Process expenses in order. When fund < expense amount and someone physically
-  // paid (paid_by_member_id), the shortfall is their personal advance.
+  // Interleave contributions AND expenses by time so that a top-up made AFTER
+  // some expenses is not counted as available fund before those expenses.
   const advances: Record<string, number> = {}
   members.forEach(m => { advances[m.id] = 0 })
 
-  let runningFund = totalContributions
-  const sortedExpenses = [...expenses].sort(
-    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-  )
+  type ContribEvent = { type: 'contribution'; time: number; amount: number }
+  type ExpenseEvent  = { type: 'expense'; time: number; expense: Expense }
+  const events: Array<ContribEvent | ExpenseEvent> = []
 
-  for (const expense of sortedExpenses) {
-    if (expense.paid_by_member_id && advances[expense.paid_by_member_id] !== undefined) {
-      // Only the portion exceeding available fund is an out-of-pocket advance
-      const advance = Math.max(0, expense.amount - Math.max(0, runningFund))
-      advances[expense.paid_by_member_id] += advance
+  contributions.forEach(c => {
+    events.push({ type: 'contribution', time: new Date(c.created_at).getTime(), amount: c.total_amount })
+  })
+  expenses.forEach(e => {
+    events.push({ type: 'expense', time: new Date(e.created_at).getTime(), expense: e })
+  })
+  events.sort((a, b) => a.time - b.time)
+
+  let runningFund = 0
+  for (const event of events) {
+    if (event.type === 'contribution') {
+      runningFund += event.amount
+    } else {
+      const expense = event.expense
+      if (expense.paid_by_member_id && advances[expense.paid_by_member_id] !== undefined) {
+        // Only the portion exceeding available fund is an out-of-pocket advance
+        const advance = Math.max(0, expense.amount - Math.max(0, runningFund))
+        advances[expense.paid_by_member_id] += advance
+      }
+      runningFund -= expense.amount
     }
-    runningFund -= expense.amount
   }
 
   return members.map(member => {
