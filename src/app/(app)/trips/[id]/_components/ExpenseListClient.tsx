@@ -39,7 +39,7 @@ export default function ExpenseListClient({ initialExpenses, tripCurrency, settl
               </p>
               <p className="text-xs text-slate-400">
                 {expense.paid_by ? `由 ${expense.paid_by.nickname} 付款` : cat?.label}
-                {' · '}{formatDateShort(expense.created_at)}
+                {' · '}{expense.expense_date ? formatDateShort(expense.expense_date) : formatDateShort(expense.created_at)}
               </p>
             </div>
             <div className="text-right flex-shrink-0">

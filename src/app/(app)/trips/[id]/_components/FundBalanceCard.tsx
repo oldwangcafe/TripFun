@@ -10,8 +10,11 @@ interface Props {
 }
 
 export default function FundBalanceCard({ trip, expenses }: Props) {
-  const spent = trip.initial_fund - trip.current_fund
-  const percentage = trip.initial_fund > 0 ? Math.max(0, (trip.current_fund / trip.initial_fund) * 100) : 0
+  // Calculate spent from actual expense records so that fund top-ups
+  // don't inflate "已用" (initial_fund stays fixed; current_fund grows with top-ups).
+  const spent = expenses.reduce((sum, e) => sum + e.amount, 0)
+  const totalContributed = trip.current_fund + spent   // initial + all top-ups - spent + spent
+  const percentage = totalContributed > 0 ? Math.max(0, (trip.current_fund / totalContributed) * 100) : 0
   const barColor = getFundBarColor(percentage)
   const textColor = getFundStatusColor(percentage)
 

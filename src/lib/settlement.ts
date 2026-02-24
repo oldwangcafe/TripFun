@@ -22,9 +22,6 @@ export function calculateMemberBalances(
   expenses: Expense[] = [],
 ): MemberBalance[] {
   const totalContributions = contributions.reduce((sum, c) => sum + c.total_amount, 0)
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0)
-  const totalBasis = expenses.length > 0 ? totalExpenses : totalContributions
-  const perPersonFairShare = members.length > 0 ? totalBasis / members.length : 0
 
   // --- Chronological advance calculation ---
   // Interleave contributions AND expenses by time so that a top-up made AFTER
@@ -58,6 +55,15 @@ export function calculateMemberBalances(
       runningFund -= expense.amount
     }
   }
+
+  // totalPutIn = fund contributions + personal advances.
+  // fairShare must be based on totalPutIn (not just totalExpenses) so that
+  // sum(balances) == 0. Using totalExpenses alone causes sum(balances) == current_fund
+  // which breaks the settlement algorithm when there is remaining fund.
+  const totalAdvances = Object.values(advances).reduce((sum, a) => sum + a, 0)
+  const totalPutIn = totalContributions + totalAdvances
+  const totalBasis = expenses.length > 0 ? totalPutIn : totalContributions
+  const perPersonFairShare = members.length > 0 ? totalBasis / members.length : 0
 
   return members.map(member => {
     // 1. Fund contributions (money put INTO the public fund)

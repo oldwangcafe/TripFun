@@ -24,6 +24,8 @@ export default function SettlementClient({ trip, members, expenses, contribution
 
   const categoryTotals = calculateCategoryTotals(expenses)
   const totalSpent = Object.values(categoryTotals).reduce((a, b) => a + b, 0)
+  // Real total contributions = initial fund + all top-ups (not trip.initial_fund which is fixed)
+  const totalContributions = contributions.reduce((sum, c) => sum + c.total_amount, 0)
   const memberBalances = calculateMemberBalances(members, contributions, expenses)
   const settlements = calculateSettlements(memberBalances, trip.trip_currency)
 
@@ -65,7 +67,7 @@ export default function SettlementClient({ trip, members, expenses, contribution
         <div className="flex gap-4 text-sm">
           <div>
             <p className="text-white/60 text-xs">總入帳</p>
-            <p className="font-semibold">{formatCurrency(trip.initial_fund, trip.trip_currency)}</p>
+            <p className="font-semibold">{formatCurrency(totalContributions, trip.trip_currency)}</p>
           </div>
           <div>
             <p className="text-white/60 text-xs">剩餘</p>

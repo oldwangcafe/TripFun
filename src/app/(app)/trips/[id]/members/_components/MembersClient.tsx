@@ -70,6 +70,7 @@ export default function MembersClient({ trip, initialMembers, isCreator, userId 
     setNewNickname('')
     setAdding(false)
     setLoading(false)
+    router.refresh()   // Sync member count shown on trip detail page
   }
 
   return (

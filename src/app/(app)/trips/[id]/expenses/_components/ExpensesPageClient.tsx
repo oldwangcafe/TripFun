@@ -79,7 +79,25 @@ export default function ExpensesPageClient({ trip, initialExpenses, members, isM
 
       {/* Add button for managers */}
       {isManager && trip.status === 'active' && (
-        <AddExpenseButton trip={trip} members={members} userId={userId} />
+        <AddExpenseButton
+          trip={trip}
+          members={members}
+          userId={userId}
+          onExpenseAdded={(expense) => {
+            const optimistic = {
+              id: `optimistic-${Date.now()}`,
+              trip_id: trip.id,
+              amount: expense.amount,
+              category: expense.category as Expense['category'],
+              description: expense.description,
+              paid_by_member_id: expense.paidByMemberId || undefined,
+              created_at: new Date().toISOString(),
+              recorded_by: userId,
+            }
+            setExpenses(prev => [optimistic, ...prev])
+            router.refresh()
+          }}
+        />
       )}
 
       {/* Expense list */}
@@ -114,7 +132,7 @@ export default function ExpensesPageClient({ trip, initialExpenses, members, isM
                   </div>
                   <p className="text-xs text-slate-400">
                     {expense.paid_by ? `${expense.paid_by.nickname} 付款` : '公基金支出'}
-                    {' · '}{formatDate(expense.created_at)}
+                    {' · '}{expense.expense_date ? formatDate(expense.expense_date) : formatDate(expense.created_at)}
                   </p>
                   {expense.note && (
                     <p className="text-xs text-slate-400 mt-0.5 truncate">備註：{expense.note}</p>
