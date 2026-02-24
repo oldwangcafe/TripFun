@@ -1,7 +1,8 @@
 'use client'
 import { cn } from '@/lib/utils'
 import { X } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 interface ModalProps {
   open: boolean
@@ -12,6 +13,10 @@ interface ModalProps {
 }
 
 export function Modal({ open, onClose, title, children, className }: ModalProps) {
+  // Track whether we're mounted on the client (for SSR safety)
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
   useEffect(() => {
     if (open) {
       document.body.style.overflow = 'hidden'
@@ -21,15 +26,15 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
     return () => { document.body.style.overflow = '' }
   }, [open])
 
-  if (!open) return null
+  if (!open || !mounted) return null
 
-  return (
-    /*
-     * Outer div is a SCROLLABLE fixed overlay.
-     * This lets the user scroll up to reach the header/close button
-     * even when the modal is taller than the visible viewport
-     * (common on mobile where the browser address bar eats space).
-     */
+  /*
+   * We use createPortal to render the overlay at document.body level.
+   * This escapes ANY parent stacking context (e.g. Navbar's backdrop-blur-md
+   * creates a stacking context that traps children's z-index values).
+   * With a portal the z-50 overlay is always on top of everything.
+   */
+  return createPortal(
     <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Backdrop — stays fixed so it always covers the full screen */}
       <div
@@ -37,7 +42,7 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
         onClick={onClose}
       />
 
-      {/* Inner centering wrapper — min-h-full ensures centering when content is short */}
+      {/* Inner centering wrapper */}
       <div className="flex min-h-full items-center justify-center p-4">
         <div className={cn(
           'relative bg-white w-full max-w-sm rounded-2xl',
@@ -63,6 +68,7 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

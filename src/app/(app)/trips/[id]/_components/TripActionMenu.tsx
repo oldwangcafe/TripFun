@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { MoreVertical, Flag, Share2, Copy } from 'lucide-react'
+import { Settings, Flag, Share2, Copy } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import Button from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
@@ -60,9 +60,10 @@ export default function TripActionMenu({ tripId, tripStatus, isCreator }: Props)
     <>
       <button
         onClick={() => setShowMenu(true)}
-        className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 transition-colors"
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-600 text-sm font-medium transition-colors"
       >
-        <MoreVertical className="w-5 h-5" />
+        <Settings className="w-4 h-4" />
+        設定
       </button>
 
       <Modal open={showMenu} onClose={() => setShowMenu(false)} title="旅程設定">
