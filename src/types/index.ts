@@ -22,6 +22,8 @@ export interface Trip {
   creator_id: string
   exchange_rate?: number
   ended_at?: string
+  start_date?: string
+  end_date?: string
   trip_members?: TripMember[]
 }
 
@@ -46,6 +48,7 @@ export interface Expense {
   description: string
   paid_by_member_id?: string
   note?: string
+  expense_date?: string
   paid_by?: TripMember
 }
 

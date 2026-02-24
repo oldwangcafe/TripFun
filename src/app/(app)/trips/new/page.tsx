@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, X, MapPin, Users, DollarSign } from 'lucide-react'
+import { Plus, X, MapPin, Users, DollarSign, Calendar } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Navbar } from '@/components/layout/Navbar'
 import Button from '@/components/ui/Button'
@@ -17,6 +17,8 @@ export default function NewTripPage() {
   const router = useRouter()
   const [title, setTitle] = useState('')
   const [destination, setDestination] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
   const [tripCurrency, setTripCurrency] = useState('JPY')
   const [settlementCurrency, setSettlementCurrency] = useState('TWD')
   const [perPerson, setPerPerson] = useState('')
@@ -51,6 +53,10 @@ export default function NewTripPage() {
       setError('至少需要填寫一位成員暱稱')
       return
     }
+    if (startDate && endDate && endDate < startDate) {
+      setError('結束日期不能早於開始日期')
+      return
+    }
     setLoading(true)
     setError('')
 
@@ -74,6 +80,8 @@ export default function NewTripPage() {
         current_fund: totalFund,
         creator_id: user.id,
         status: 'active',
+        ...(startDate ? { start_date: startDate } : {}),
+        ...(endDate   ? { end_date: endDate }     : {}),
       })
       .select()
       .single()
@@ -156,6 +164,37 @@ export default function NewTripPage() {
                 required
               />
             </div>
+          </Card>
+
+          {/* 旅程日期 */}
+          <Card>
+            <h2 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-indigo-500" />
+              旅程日期（選填）
+            </h2>
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="出發日期"
+                type="date"
+                value={startDate}
+                onChange={e => {
+                  setStartDate(e.target.value)
+                  if (endDate && e.target.value > endDate) setEndDate('')
+                }}
+              />
+              <Input
+                label="返程日期"
+                type="date"
+                value={endDate}
+                min={startDate || undefined}
+                onChange={e => setEndDate(e.target.value)}
+              />
+            </div>
+            {startDate && endDate && (
+              <p className="text-xs text-slate-400 mt-2 text-center">
+                共 {Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000) + 1} 天
+              </p>
+            )}
           </Card>
 
           {/* 幣別設定 */}

@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
-import { BarChart2, Users, Receipt, ArrowRight } from 'lucide-react'
+import { BarChart2, Users, Receipt, ArrowRight, Calendar, Coins } from 'lucide-react'
+import { getCurrencyInfo } from '@/lib/utils'
 import { Navbar } from '@/components/layout/Navbar'
 import { Card } from '@/components/ui/Card'
 import TripActionMenu from './_components/TripActionMenu'
@@ -61,6 +62,41 @@ export default async function TripDetailPage({ params }: { params: Promise<{ id:
       />
 
       <div className="px-4 py-4 space-y-4">
+
+        {/* Trip info: dates + currencies */}
+        {(trip.start_date || trip.end_date || trip.trip_currency) && (
+          <div className="flex flex-wrap gap-2">
+            {(trip.start_date || trip.end_date) && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 rounded-full">
+                <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+                <span className="text-xs font-medium text-indigo-700">
+                  {trip.start_date
+                    ? new Date(trip.start_date).toLocaleDateString('zh-TW', { month: 'short', day: 'numeric' })
+                    : '—'}
+                  {' ~ '}
+                  {trip.end_date
+                    ? new Date(trip.end_date).toLocaleDateString('zh-TW', { month: 'short', day: 'numeric' })
+                    : '—'}
+                </span>
+              </div>
+            )}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 rounded-full">
+              <Coins className="w-3.5 h-3.5 text-slate-500" />
+              <span className="text-xs font-medium text-slate-600">
+                記帳 {getCurrencyInfo(trip.trip_currency).symbol} {trip.trip_currency}
+              </span>
+            </div>
+            {trip.settlement_currency && trip.settlement_currency !== trip.trip_currency && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 rounded-full">
+                <Coins className="w-3.5 h-3.5 text-slate-500" />
+                <span className="text-xs font-medium text-slate-600">
+                  結帳 {getCurrencyInfo(trip.settlement_currency).symbol} {trip.settlement_currency}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Client component: FundBalanceCard + quick actions + recent expenses (with optimistic updates) */}
         <TripDetailClient
           trip={trip}
