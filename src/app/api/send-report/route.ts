@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'TripFun <noreply@tripfund.app>',
+      from: 'TripFun <onboarding@resend.dev>',
       to: [userEmail],
       subject: `✈️ ${trip.title} 旅程結算報告`,
       html,
